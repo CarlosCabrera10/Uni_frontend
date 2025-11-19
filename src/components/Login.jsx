@@ -1,166 +1,69 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios, { setAuthToken } from "../lib/axiosClient";
+import api, { setAuthToken } from "../lib/axiosClient";
 
-function App() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+function Login() {
+  const [email, setEmail] = useState("miempresa@gmail.com");
+  const [password, setPassword] = useState("qwerty");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const [token, setToken] = useState("");
-  const [uuid, setUUID] = useState("");
-
-  useEffect(() => {
-    // Verificar si ya hay tokens guardados
-    const checkTokens = () => {
-      const savedToken = localStorage.getItem("authToken");
-      const savedUUID = localStorage.getItem("userUUID");
-      // if token present set it on axios client so requests include Authorization
-      if (savedToken) {
-        setToken(savedToken);
-        setAuthToken(savedToken);
-      }
-      if (savedToken && savedUUID) {
-        setUUID(savedUUID);
-        setIsAuthenticated(true);
-      }
-    };
-
-    checkTokens();
-
-    // Escuchar eventos de inyección desde Swift
-    window.addEventListener("tokensInjected", checkTokens);
-    window.addEventListener("storage", checkTokens);
-
-    return () => {
-      window.removeEventListener("tokensInjected", checkTokens);
-      window.removeEventListener("storage", checkTokens);
-    };
-  }, []);
-
-  const parseAuthError = (error) => {
-    const errorDescription = error.toLowerCase();
-
-    if (
-      errorDescription.includes("invalid login credentials") ||
-      errorDescription.includes("invalid_grant") ||
-      errorDescription.includes("email not confirmed")
-    ) {
-      return "Email o contraseña incorrectos. Por favor verifica tus credenciales.";
-    } else if (
-      errorDescription.includes("user not found") ||
-      errorDescription.includes("email_not_found")
-    ) {
-      return "No existe una cuenta con este email. Verifica el email o regístrate.";
-    } else if (errorDescription.includes("too_many_requests")) {
-      return "Demasiados intentos. Espera unos minutos antes de intentar nuevamente.";
-    } else if (
-      errorDescription.includes("network") ||
-      errorDescription.includes("connection")
-    ) {
-      return "Error de conexión. Verifica tu internet e intenta nuevamente.";
-    } else {
-      return "Error al iniciar sesión. Verifica tus credenciales e intenta nuevamente.";
-    }
-  };
 
   const handleAuth = async () => {
-    setErrorMessage(null);
-
     if (!email || !password) {
-      setErrorMessage("Por favor completa todos los campos");
+      setErrorMessage("Por favor ingresa tu email y contraseña");
       return;
     }
 
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
-      const res = await axios.post("/api/auth/signin", { email, password });
-      const body = res.data;
+      const response = await api.post("/api/auth/signin", {
+        email,
+        password
+      });
 
-      // Response contains session, user, usuario, perfil, perfil_empresa
-      const { session, user, usuario, perfil, perfil_empresa } = body;
+      // Login successful - store token and user data
+      const { token, user } = response.data;
 
-      const accessToken = session?.access_token || null;
+      // Store token in localStorage
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userData", JSON.stringify(user));
 
-      if (accessToken) {
-        localStorage.setItem("authToken", accessToken);
-        setAuthToken(accessToken);
-      }
-      // store full session and user info for dashboard
-      if (session) localStorage.setItem("session", JSON.stringify(session));
-      if (user) localStorage.setItem("authUser", JSON.stringify(user));
-      if (user?.id) localStorage.setItem("userUUID", user.id);
-      if (usuario) localStorage.setItem("usuario", JSON.stringify(usuario));
-      if (perfil) localStorage.setItem("perfil", JSON.stringify(perfil));
-      if (perfil_empresa)
-        localStorage.setItem("perfil_empresa", JSON.stringify(perfil_empresa));
+      // Set token in axios headers for future requests
+      setAuthToken(token);
 
-      setToken(accessToken || "");
-      setUUID(user?.id || "");
-      setIsAuthenticated(true);
-
-      // Navigate to dashboard
+      // Redirect to dashboard
       navigate("/dashboard");
     } catch (error) {
-      // axios errors: error.response?.data or error.message
-      const msg =
-        error?.response?.data?.error || error?.message || "Error desconocido";
-      setErrorMessage(parseAuthError((msg || "").toString()));
+      console.error("Login error:", error);
+
+      if (error.response?.status === 401) {
+        setErrorMessage("Credenciales invalidas para empresa");
+      } else if (error.response?.data?.error) {
+        setErrorMessage(error.response.data.error);
+      } else {
+        setErrorMessage("Error al iniciar sesión. Inténtalo de nuevo.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userUUID");
-    setToken("");
-    setUUID("");
-    setIsAuthenticated(false);
-    setEmail("");
-    setPassword("");
-    setRememberMe(false);
-  };
+  // Handle Enter key press
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === "Enter") {
+        handleAuth();
+      }
+    };
 
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-5">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              ✅ Sesión Activa
-            </h2>
-            <div className="space-y-3 mb-6">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Token:</p>
-                <p className="text-xs font-mono bg-gray-50 p-2 rounded border border-gray-200 break-all">
-                  {token.substring(0, 40)}...
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">UUID:</p>
-                <p className="text-xs font-mono bg-gray-50 p-2 rounded border border-gray-200">
-                  {uuid}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-md transition-colors"
-            >
-              Cerrar Sesión
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+    document.addEventListener("keypress", handleKeyPress);
+    return () => document.removeEventListener("keypress", handleKeyPress);
+  }, [email, password]);
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 flex items-center justify-center px-5 py-8">
@@ -307,7 +210,6 @@ function App() {
             <div className="px-5 mt-4">
               <button
                 onClick={handleAuth}
-                disabled={isLoading}
                 className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-400 text-white font-semibold rounded-md transition-colors flex items-center justify-center gap-2"
               >
                 {isLoading && (
@@ -357,4 +259,4 @@ function App() {
   );
 }
 
-export default App;
+export default Login;
