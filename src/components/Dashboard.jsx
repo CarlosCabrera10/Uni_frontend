@@ -1,20 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { setAuthToken } from "../lib/axiosClient";
 
 const Dashboard = () => {
-  const [userData, setUserData] = useState(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Get user data from localStorage
-    const storedUserData = localStorage.getItem("userData");
-    if (storedUserData) {
-      try {
-        const parsedUserData = JSON.parse(storedUserData);
-        setUserData(parsedUserData);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
+  // Get user data from localStorage on component mount
+  const getUserData = () => {
+    try {
+      const storedUserData = localStorage.getItem("userData");
+      return storedUserData ? JSON.parse(storedUserData) : null;
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      return null;
     }
-  }, []);
+  };
+
+  const userData = getUserData();
+
+  const handleLogout = () => {
+    // Clear authentication data
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+
+    // Clear auth token from axios headers
+    setAuthToken(null);
+
+    // Redirect to login
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -34,9 +48,17 @@ const Dashboard = () => {
                 </p>
               </div>
             )}
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 mb-6">
               <p>Has iniciado sesión exitosamente como empresa.</p>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="w-full py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md transition-colors"
+            >
+              Cerrar Sesión
+            </button>
           </div>
         </div>
       </div>

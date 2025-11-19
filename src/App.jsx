@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, { PublicRoute } from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -15,8 +15,15 @@ function App() {
         {/* Redirigir la raíz a login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Ruta de login */}
-        <Route path="/login" element={<Login />} />
+        {/* Ruta de login - protegida para usuarios autenticados */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
 
         {/* Ruta protegida del dashboard */}
         <Route
