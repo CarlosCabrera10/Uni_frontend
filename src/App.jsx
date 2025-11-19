@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 function App() {
   const [token, setToken] = useState("");
 
-  useEffect(() => {
-    // Leer el token desde localStorage
+  const mostrarToken = () => {
     const savedToken = localStorage.getItem("authToken");
-    if (savedToken) {
-      setToken(savedToken);
-    }
-  }, []);
+    setToken(savedToken || "");
+  };
 
   return (
     <div
@@ -18,13 +15,16 @@ function App() {
         maxWidth: 400,
         margin: "auto",
         fontFamily: "sans-serif",
-        textAlign: "center",
+        textAlign: "center"
       }}
     >
       <h2>ADMIN Móvil</h2>
       <p>Prueba para WebView Swift</p>
 
-      {/* Mostrar token si existe */}
+      <button onClick={mostrarToken} style={{ padding: 10, marginBottom: 20 }}>
+        Mostrar Token
+      </button>
+
       {token ? (
         <p>
           <strong>Token guardado:</strong> {token}
